@@ -1,13 +1,15 @@
 use std::{
     io::{self, BufRead},
-    process::{Command, Stdio},
+    process::{ChildStderr, ChildStdout, Command, Stdio},
     sync::mpsc::{self, Sender},
     thread,
 };
+#[derive(Clone)]
 struct ExcCommand {
     name: &'static str,
     content: &'static str,
 }
+
 fn main() {
     let commands: Vec<ExcCommand> = vec![
         ExcCommand {
@@ -39,27 +41,22 @@ fn new_command(command: ExcCommand, tx: Sender<String>) -> Result<(), io::Error>
         .stderr(Stdio::piped())
         .arg(command.content)
         .spawn()?;
-    let stdout = child.stdout.take().unwrap();
-    let stderr = child.stderr.take().unwrap();
-
-    let tx_stderr = tx.clone();
+    let stdout: ChildStdout = child.stdout.take().unwrap();
+    let stderr: ChildStderr = child.stderr.take().unwrap();
+    send_line(&tx, command.clone(), stderr);
+    send_line(&tx, command, stdout);
+    Ok(())
+}
+fn send_line<T>(tx: &Sender<String>, command: ExcCommand, stream: T)
+where
+    T: io::Read + Send + 'static,
+{
+    let tx = tx.clone();
     thread::spawn(move || {
-        let err_reader = io::BufReader::new(stderr);
-        for err_line in err_reader.lines() {
-            let err_line = err_line.unwrap();
-            tx_stderr
-                .send(format!("{}:{}", command.name, err_line))
-                .unwrap();
-        }
-    });
-
-    let tx_stdout = tx.clone();
-    thread::spawn(move || {
-        let reader = io::BufReader::new(stdout);
+        let reader = io::BufReader::new(stream);
         for line in reader.lines() {
             let line = line.unwrap();
-            tx_stdout.send(format!("{}:{}", command.name, line)).unwrap();
+            tx.send(format!("{}:{}", command.name, line)).unwrap();
         }
     });
-    Ok(())
 }
