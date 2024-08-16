@@ -1,34 +1,59 @@
 use std::{
-    sync::mpsc::{self},
+    collections::HashMap,
+    sync::{Arc, Mutex},
     thread,
 };
-
-use commands::{new_command, read_config, ExcCommand};
+use commands::{new_command, read_config, ExcCommand, SharedState};
 use serde_json::Value;
+use warp::Filter;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_path = "config.json";
     let config = read_config(config_path)?;
     let mut commands: Vec<ExcCommand> = vec![];
     if let Value::Object(map) = config {
         for (key, value) in map {
             let command = ExcCommand {
-                name: key,
+                name: key.clone(),
                 content: value.as_str().unwrap_or("").to_string(),
             };
-            commands.push(command)
+            commands.push(command);
         }
     }
-    let (tx, rx) = mpsc::channel();
+
+    let (tx, rx) = std::sync::mpsc::channel();
+    let output_store: SharedState = Arc::new(Mutex::new(HashMap::new()));
+
     for command in commands {
         let tx = tx.clone();
+        let output_store = output_store.clone();
         thread::spawn(move || {
-            let _ = new_command(command, tx);
+            let _ = new_command(command, tx, output_store);
         });
     }
+    
     drop(tx);
+
+    let output_store = warp::any().map(move || output_store.clone());
+
+    let get_output = warp::path!("command" / String)
+        .and(output_store)
+        .map(|name: String, output_store: SharedState| {
+            let output_store = output_store.lock().unwrap();
+            match output_store.get(&name) {
+                Some(output) => warp::reply::html(output.join("\n")),
+                None => warp::reply::html("No output found".to_string()),
+            }
+        });
+
+    let routes = warp::get().and(get_output);
+    tokio::spawn(async move {
+        warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
+    });
     for received in rx {
         println!("{}", received);
     }
+
     Ok(())
 }
