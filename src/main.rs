@@ -3,19 +3,22 @@ use std::{
     thread,
 };
 
-use commands::{new_command, ExcCommand};
+use commands::{new_command, read_config, ExcCommand};
+use serde_json::Value;
 
-fn main() {
-    let commands: Vec<ExcCommand> = vec![
-        ExcCommand {
-            name: "agent",
-            content: "cd /Volumes/work/code/agent.kgd.ltd && pnpm dev:agent",
-        },
-        ExcCommand {
-            name: "app",
-            content: "cd /Volumes/work/code/agent.kgd.ltd && pnpm dev:app",
-        },
-    ];
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let config_path = "config.json";
+    let config = read_config(config_path)?;
+    let mut commands: Vec<ExcCommand> = vec![];
+    if let Value::Object(map) = config {
+        for (key, value) in map {
+            let command = ExcCommand {
+                name: key,
+                content: value.as_str().unwrap_or("").to_string(),
+            };
+            commands.push(command)
+        }
+    }
     let (tx, rx) = mpsc::channel();
     for command in commands {
         let tx = tx.clone();
@@ -27,4 +30,5 @@ fn main() {
     for received in rx {
         println!("{}", received);
     }
+    Ok(())
 }

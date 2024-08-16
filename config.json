@@ -1,0 +1,4 @@
+{
+  "app": "cd /Volumes/work/code/agent.kgd.ltd && pnpm dev:app",
+  "agent": "cd /Volumes/work/code/agent.kgd.ltd && pnpm dev:agent"
+}
