@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>面板</title>
+</head>
+<style>
+  :root {
+    font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    color-scheme: dark;
+  }
+</style>
+
+<body>
+  <code id="code"></code>
+</body>
+<script>
+  const getData = () => {
+    fetch('http://localhost:3030/command/app').then(res => res.text()).then(txt => {
+      const oldTxt = code.innerText
+      code.innerText = txt
+      if(oldTxt.replaceAll(" ", '').length!==txt.replaceAll(" ", '').length){        
+        window.scrollTo(0, document.body.scrollHeight);
+      }
+    }).finally(() => {
+      setTimeout(getData, 720)
+    })
+  }
+  getData()
+</script>
+
+</html>

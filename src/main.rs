@@ -6,7 +6,7 @@ use std::{
 use commands::{new_command, read_config, ExcCommand, SharedState};
 use serde_json::Value;
 use warp::Filter;
-
+use warp::http::Method;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config_path = "config.json";
@@ -33,8 +33,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     }
     
-    drop(tx);
-
     let output_store = warp::any().map(move || output_store.clone());
 
     let get_output = warp::path!("command" / String)
@@ -46,8 +44,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None => warp::reply::html("No output found".to_string()),
             }
         });
-
-    let routes = warp::get().and(get_output);
+    // CORS 过滤器
+    let cors = warp::cors()
+        .allow_any_origin() // 或者 .allow_origin("http://example.com") 仅允许特定来源
+        .allow_methods(&[Method::GET, Method::POST])
+        .allow_headers(vec!["Content-Type", "Authorization"]);
+    let routes = warp::get().and(get_output).with(cors);
     tokio::spawn(async move {
         warp::serve(routes).run(([127, 0, 0, 1], 3030)).await;
     });
