@@ -26,8 +26,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output_store: SharedState = Arc::new(Mutex::new(HashMap::new()));
 
     for command in commands {
-        let tx = tx.clone();
         let output_store = output_store.clone();
+        let tx = tx.clone();
         thread::spawn(move || {
             let _ = new_command(command, tx, output_store);
         });
@@ -46,7 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         });
     // CORS 过滤器
     let cors = warp::cors()
-        .allow_any_origin() // 或者 .allow_origin("http://example.com") 仅允许特定来源
+        .allow_any_origin() 
         .allow_methods(&[Method::GET, Method::POST])
         .allow_headers(vec!["Content-Type", "Authorization"]);
     let routes = warp::get().and(get_output).with(cors);

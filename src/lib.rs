@@ -47,7 +47,7 @@ where
         for line in reader.lines() {
             match line {
                 Ok(line) => {
-                    tx.send(line.clone()).unwrap();  // 仅发送行内容，不附加命令标识符
+                    tx.send(line.clone()).unwrap();
 
                     // 将输出存储在共享状态中
                     let mut output_store = output_store.lock().unwrap();

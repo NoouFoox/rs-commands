@@ -20,7 +20,7 @@
 </body>
 <script>
   const getData = () => {
-    fetch('http://localhost:3030/command/app').then(res => res.text()).then(txt => {
+    fetch('http://localhost:3030/command/agent').then(res => res.text()).then(txt => {
       const oldTxt = code.innerText
       code.innerText = txt
       if(oldTxt.replaceAll(" ", '').length!==txt.replaceAll(" ", '').length){        
